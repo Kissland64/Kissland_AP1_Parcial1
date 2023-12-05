@@ -1,0 +1,114 @@
+@page "/ConsultaIngresos"
+@using Kissland_AP1.Models
+@inject IngresosBLL ingresosBLL;
+@inject NotificationService notificationService;
+
+<div class="card-header row">
+    <div class="col-md-4">
+        <label>Desde: </label>
+        <InputDate @bind-Value="fechaDesde" class="form-control id-input"></InputDate>
+    </div>
+    <div class="col-md-4">
+        <label>Hasta: </label>
+        <InputDate @bind-Value="fechaHasta" class="form-control id-input"></InputDate>
+    </div>
+    <label>Filtrar Por:</label>
+    <div class="col-md-6 input-group filter-input">
+        <InputSelect @bind-Value="Filtro" class="form-select">
+            <option value="0">Sin filtro</option>
+            <option value="1">Ingreso Id</option>
+            <option value="2">Concepto</option>
+        </InputSelect>
+        <div class="input-group-append">
+            <button type="button" class="btn btn-dark oi oi-magnifying-glass" @onclick="Buscar"></button>
+        </div>
+    </div>
+    <div class="col-md-6">
+        @switch (Filtro)
+        {
+            case 1:
+                <InputNumber @bind-Value="ingresos.IngresoId" class="form-control"></InputNumber>
+                break;
+            case 2:
+                <InputText @bind-Value="ingresos.Concepto" class="form-control"></InputText>
+                break;
+        }
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Aporte ID</th>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th>Monto</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var ingresos in IngresosList)
+            {
+                <tr>
+                    <td>@ingresos.IngresoId</td>
+                    <td>@ingresos.Fecha.ToString("dd/MM/yyyy")</td>
+                    <td>@ingresos.Concepto</td>
+                    <td>@ingresos.Monto</td>
+                </tr>
+            }
+            <tr>
+                <td>Conteo: @Conteo</td>
+                <td></td>
+                <td></td>
+                <td>Total: @TotalMonto</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+
+@code
+{
+    public Ingresos ingresos { get; set; } = new Ingresos();
+    public List<Ingresos>? IngresosList { get; set; } = new List<Ingresos>();
+    public int Filtro { get; set; }
+    public int Conteo { get; set; }
+    public DateTime fechaDesde { get; set; }
+    public DateTime fechaHasta { get; set; }
+    public float TotalMonto {get; set;}
+
+    protected override void OnInitialized()
+    {
+        IngresosList = ingresosBLL.Listar(a => true);
+        fechaDesde = DateTime.Now.AddMonths(-1);
+        fechaHasta = DateTime.Now;
+        Conteo = IngresosList.Count;
+        TotalMonto = IngresosList.Sum(m => m.Monto);
+    }
+    public void Buscar()
+    {
+        if (fechaDesde > fechaHasta || fechaHasta > DateTime.Now)
+        {
+            return;
+        }
+
+        if (Filtro == 1 && ingresos.IngresoId > 0)
+        {
+            IngresosList = ingresosBLL.Listar(l => l.IngresoId == ingresos.IngresoId && l.Fecha.Date >= fechaDesde.Date && l.Fecha.Date <= fechaHasta.Date);
+        }
+        else if (Filtro == 2 && !string.IsNullOrEmpty(ingresos.Concepto))
+        {
+            IngresosList = ingresosBLL.Listar(l => l.Concepto!.ToLower() == ingresos.Concepto!.ToLower() && l.Fecha.Date >= fechaDesde.Date && l.Fecha.Date <= fechaHasta.Date);
+        }
+        else
+        {
+            IngresosList = ingresosBLL.Listar(l => l.Fecha.Date >= fechaDesde.Date && l.Fecha.Date <= fechaHasta.Date);
+        }
+
+        Conteo = IngresosList.Count;
+        TotalMonto = IngresosList.Sum(m => m.Monto);
+
+        StateHasChanged();
+    }
+}
